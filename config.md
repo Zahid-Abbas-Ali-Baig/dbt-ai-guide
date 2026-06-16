@@ -40,9 +40,6 @@ MARTS_SCHEMA:        {{marts}}
 
 ## Example (commented — do not use as active config)
 
-<!--
-CLIENT_REQUIREMENTS_DOC:  AI Assisted Analytics Engineering Challenge.md
-
 PROJECT_NAME:        shopsphere
 WAREHOUSE_TYPE:      postgres
 DATABASE_NAME:       shopsphere
@@ -57,4 +54,3 @@ SOURCE_NAME:         ecommerce
 STAGING_SCHEMA:      staging
 INTERMEDIATE_SCHEMA: intermediate
 MARTS_SCHEMA:        marts
--->
