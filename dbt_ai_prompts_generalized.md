@@ -9,7 +9,7 @@
 ## How to Use This Library
 
 1. Obtain the **client requirements document** — goals, domain background, business questions, pain points, and any schema or source-system hints.
-2. Fill in [`config.md`](config.md) — one file for all project variables.
+2. Fill in `[config.md](config.md)` — one file for all project variables.
 3. Run **Phase 1 — Minimal Bootstrap** if no working dbt project exists yet (required before codegen discovery). Skip if `dbt_project.yml`, `profiles.yml`, and `dbt deps` already succeed.
 4. Run **Phase 0** with `config.md` and the client doc attached. Review the **Design Brief** output.
 5. **Stop and approve** the Design Brief before continuing. Edit it if needed.
@@ -42,11 +42,13 @@ flowchart TD
     Phase5 --> Phase6
 ```
 
+
+
 ---
 
 ## Project Config
 
-All connection and project identity variables live in [`config.md`](config.md).
+All connection and project identity variables live in `[config.md](config.md)`.
 
 Read `config.md` at the start of every phase and substitute values into commands and file paths.
 
@@ -54,15 +56,18 @@ Read `config.md` at the start of every phase and substitute values into commands
 
 ## Skill Reference Matrix
 
-| Skill | Used In |
-| :--- | :--- |
+
+| Skill                                 | Used In                   |
+| ------------------------------------- | ------------------------- |
 | `using-dbt-for-analytics-engineering` | Phase 0, 1, 2, 3, 4, 5, 6 |
-| `running-dbt-commands` | Phase 0, 1, 2, 3, 6 |
-| `building-dbt-semantic-layer` | Phase 6 |
+| `running-dbt-commands`                | Phase 0, 1, 2, 3, 6       |
+| `building-dbt-semantic-layer`         | Phase 6                   |
+
 
 > **Run order:** Phase 1 (bootstrap) → Phase 0 (discovery) → approve Design Brief → Phases 2–6 (build).
 
 > Install dbt Agent Skills:
+>
 > ```bash
 > npx skills add dbt-labs/dbt-agent-skills/skills/dbt
 > ```
@@ -73,13 +78,15 @@ Read `config.md` at the start of every phase and substitute values into commands
 
 AI infers `{entity}`, `{source}`, and `{raw_table}` from the client doc and discovered schema. The framework enforces these prefixes and responsibilities only.
 
-| Layer | Pattern | Example | Responsibility |
-| :--- | :--- | :--- | :--- |
-| Staging | `stg_{source}__{raw_table}` | `stg_{source}__{raw_table}` | 1:1 source grain; clean, rename, cast columns only — **no joins** |
-| Intermediate | `int_{entity}__{relationship_or_verb}` | `int_{fact}__{dim}_enriched`, `int_{left}__{right}_joined` | **All relationship logic**: FK joins, bridge resolution, grain enrichment, orphan handling, pre-mart aggregations |
-| Marts (fact) | `fct_{entity}` | `fct_{entity}` | Presentation-ready fact at declared grain |
-| Marts (dim) | `dim_{entity}` | `dim_{entity}` | Presentation-ready dimension; attributes + optional rollups from intermediate |
-| Marts (bridge) | `bridge_{entity}` | `bridge_{entity}` | Many-to-many or associative tables for star schema |
+
+| Layer          | Pattern                                | Example                                                    | Responsibility                                                                                                    |
+| -------------- | -------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Staging        | `stg_{source}__{raw_table}`            | `stg_{source}__{raw_table}`                                | 1:1 source grain; clean, rename, cast columns only — **no joins**                                                 |
+| Intermediate   | `int_{entity}__{relationship_or_verb}` | `int_{fact}__{dim}_enriched`, `int_{left}__{right}_joined` | **All relationship logic**: FK joins, bridge resolution, grain enrichment, orphan handling, pre-mart aggregations |
+| Marts (fact)   | `fct_{entity}`                         | `fct_{entity}`                                             | Presentation-ready fact at declared grain                                                                         |
+| Marts (dim)    | `dim_{entity}`                         | `dim_{entity}`                                             | Presentation-ready dimension; attributes + optional rollups from intermediate                                     |
+| Marts (bridge) | `bridge_{entity}`                      | `bridge_{entity}`                                          | Many-to-many or associative tables for star schema                                                                |
+
 
 **Layer rules:**
 
@@ -89,20 +96,24 @@ AI infers `{entity}`, `{source}`, and `{raw_table}` from the client doc and disc
 
 ### Intermediate Model Types
 
-| Type | Naming pattern | Purpose |
-| :--- | :--- | :--- |
-| Join / enrich | `int_{fact}__{dim}_enriched` | Attach dimension attributes to fact grain |
-| Bridge resolve | `int_{left}__{right}_joined` | Resolve many-to-many via bridge table |
-| Aggregate prep | `int_{entity}__{metric}_summary` | Roll up measures before mart |
-| Reconcile | `int_{metric}__reconciled` | Cross-source or cross-fact alignment |
+
+| Type           | Naming pattern                   | Purpose                                   |
+| -------------- | -------------------------------- | ----------------------------------------- |
+| Join / enrich  | `int_{fact}__{dim}_enriched`     | Attach dimension attributes to fact grain |
+| Bridge resolve | `int_{left}__{right}_joined`     | Resolve many-to-many via bridge table     |
+| Aggregate prep | `int_{entity}__{metric}_summary` | Roll up measures before mart              |
+| Reconcile      | `int_{metric}__reconciled`       | Cross-source or cross-fact alignment      |
+
 
 ### Table Classification Rules (AI applies in Phase 0)
 
-| Classification | Criteria |
-| :--- | :--- |
-| **Fact** | Transactional or event grain; contains measures; FKs point to dimensions |
-| **Dimension** | Descriptive attributes; relatively stable entity grain |
-| **Bridge** | Resolves many-to-many between two entities (line items, allocations, mappings) |
+
+| Classification | Criteria                                                                       |
+| -------------- | ------------------------------------------------------------------------------ |
+| **Fact**       | Transactional or event grain; contains measures; FKs point to dimensions       |
+| **Dimension**  | Descriptive attributes; relatively stable entity grain                         |
+| **Bridge**     | Resolves many-to-many between two entities (line items, allocations, mappings) |
+
 
 ---
 
@@ -131,7 +142,7 @@ AI infers `{entity}`, `{source}`, and `{raw_table}` from the client doc and disc
 └── README.md
 ```
 
-> `<PROJECT_NAME>` and `<SOURCE_NAME>` — substitute from [`config.md`](config.md).
+> `<PROJECT_NAME>` and `<SOURCE_NAME>` — substitute from `[config.md](config.md)`.
 
 ---
 
@@ -139,71 +150,98 @@ AI infers `{entity}`, `{source}`, and `{raw_table}` from the client doc and disc
 
 Phase 0 produces this document. Phases 2–6 must use the **approved** Design Brief as the single source of truth. Do not invent tables, relationships, or model names not listed here.
 
-```markdown
-# Design Brief — <PROJECT_NAME>
+# Design Brief — 
 
-> <PROJECT_NAME> from config.md
+>  from config.md
 
 ## 1. Domain Summary
-<!-- AI: extract from client requirements document -->
+
+
 
 ## 2. Business Questions → KPI Map
+
+
 | Business Question | Proposed KPI / Metric | Target Grain |
-| :--- | :--- | :--- |
-| | | |
+| ----------------- | --------------------- | ------------ |
+|                   |                       |              |
+
 
 ## 3. Source Inventory
+
+
 | Raw Table | Row Grain | PK Column(s) | Classification (fact / dim / bridge) |
-| :--- | :--- | :--- | :--- |
-| | | | |
+| --------- | --------- | ------------ | ------------------------------------ |
+|           |           |              |                                      |
+
 
 ## 4. Relationship Graph
+
+
 | From Table | To Table | Join Key | Cardinality | Orphan Count (from dbt show) |
-| :--- | :--- | :--- | :--- | :--- |
-| | | | | |
+| ---------- | -------- | -------- | ----------- | ---------------------------- |
+|            |          |          |             |                              |
+
 
 ## 5. Column Standardization Plan
+
+
 | Source Table | Source Column | Staging Column | Transformation |
-| :--- | :--- | :--- | :--- |
-| | | | |
+| ------------ | ------------- | -------------- | -------------- |
+|              |               |                |                |
+
 
 ## 6. Staging Model List
-| Staging Model | Source Table | Notes |
-| :--- | :--- | :--- |
-| stg_<SOURCE_NAME>__{raw_table} | | |
+
+
+| Staging Model   | Source Table | Notes |
+| --------------- | ------------ | ----- |
+| stg_{raw_table} |              |       |
+
 
 ## 7. Relationship Resolution Plan (Intermediate)
-| Intermediate Model | Type | Inputs (staging refs) | Join Keys | Output Grain |
-| :--- | :--- | :--- | :--- | :--- |
-| int_{entity}__{verb} | join / bridge / aggregate / reconcile | | | |
+
+
+| Intermediate Model   | Type                                  | Inputs (staging refs) | Join Keys | Output Grain |
+| -------------------- | ------------------------------------- | --------------------- | --------- | ------------ |
+| int_{entity}__{verb} | join / bridge / aggregate / reconcile |                       |           |              |
+
 
 ## 8. Mart Star Schema
-| Mart Model | Type | Primary Intermediate Input(s) | Grain | Subject Area Folder |
-| :--- | :--- | :--- | :--- | :--- |
-| fct_{entity} | fact | | | |
-| dim_{entity} | dim | | | |
-| bridge_{entity} | bridge | | | |
+
+
+| Mart Model      | Type   | Primary Intermediate Input(s) | Grain | Subject Area Folder |
+| --------------- | ------ | ----------------------------- | ----- | ------------------- |
+| fct_{entity}    | fact   |                               |       |                     |
+| dim_{entity}    | dim    |                               |       |                     |
+| bridge_{entity} | bridge |                               |       |                     |
+
 
 ## 9. Semantic Metrics List
+
+
 | Metric Name | Type (simple / ratio / derived) | Base Mart Model | Measure / Formula | Filter |
-| :--- | :--- | :--- | :--- | :--- |
-| | | | | |
+| ----------- | ------------------------------- | --------------- | ----------------- | ------ |
+|             |                                 |                 |                   |        |
+
 
 ## 10. Work Batches (max 3 tables per codegen call)
-| Batch | Tables | Phase |
-| :--- | :--- | :--- |
-| 1 | | sources |
-| 2 | | sources |
-| ... | | staging |
-```
+
+
+| Batch | Tables | Phase   |
+| ----- | ------ | ------- |
+| 1     |        | sources |
+| 2     |        | sources |
+| ...   |        | staging |
+
 
 ### Approval Gate
 
 After Phase 0, the agent must:
 
 1. Output the complete Design Brief only — no `_sources.yml`, staging SQL, or mart models yet.
-2. Present open questions or ambiguities found during discovery.
-3. **Stop and wait** for explicit human approval or edits before Phase 2.
+2. Output the Design Brief as plain Markdown (do not wrap it in code fences).
+3. Present open questions or ambiguities found during discovery.
+4. **Stop and wait** for explicit human approval or edits before Phase 2.
 
 ---
 
@@ -211,7 +249,7 @@ After Phase 0, the agent must:
 
 Every phase prompt assumes the agent has read:
 
-1. [`config.md`](config.md) — project variables (`PROJECT_NAME`, `SCHEMA_NAME`, `SOURCE_NAME`, connection details, etc.)
+1. `[config.md](config.md)` — project variables (`PROJECT_NAME`, `SCHEMA_NAME`, `SOURCE_NAME`, connection details, etc.)
 2. Client requirements document — path from `CLIENT_REQUIREMENTS_DOC` in config.md
 3. Approved Design Brief (Phases 2–6 only)
 
@@ -227,7 +265,7 @@ Read config.md and substitute all project variables. Read the client requirement
 
 **Skills:** `using-dbt-for-analytics-engineering`, `running-dbt-commands`
 **Output:** `dbt_project.yml`, `packages.yml`, `profiles.yml`, empty `models/` folder structure; `dbt deps` succeeds
-**Prerequisite:** [`config.md`](config.md) filled in
+**Prerequisite:** `[config.md](config.md)` filled in
 **Skip when:** Project already has working `dbt_project.yml`, `profiles.yml`, and `dbt deps` / `dbt debug` succeed
 
 ```
@@ -273,7 +311,7 @@ Do not create _sources.yml or any model SQL. Proceed to Phase 0 after bootstrap 
 
 **Skills:** `using-dbt-for-analytics-engineering`, `running-dbt-commands`
 **Output:** Design Brief (all 10 sections above) — pending human approval
-**Prerequisite:** [`config.md`](config.md) filled in; client requirements document; **Phase 1 bootstrap complete** (`dbt deps` succeeded)
+**Prerequisite:** `[config.md](config.md)` filled in; client requirements document; **Phase 1 bootstrap complete** (`dbt deps` succeeded)
 
 ```
 You are an analytics engineer using the using-dbt-for-analytics-engineering and running-dbt-commands skills.
@@ -536,9 +574,11 @@ Run dbt compile. Validate semantic layer config parses.
 
 Populate during Phase 0 (draft) and finalize in Phase 6.
 
+
 | Business Question | Source Tables | Staging Models | Intermediate Model | Mart Model | Semantic Metric |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| | | | | | |
+| ----------------- | ------------- | -------------- | ------------------ | ---------- | --------------- |
+|                   |               |                |                    |            |                 |
+
 
 ---
 
@@ -546,25 +586,29 @@ Populate during Phase 0 (draft) and finalize in Phase 6.
 
 Track every phase run. Documenting AI reliability is part of the deliverable.
 
-| Phase | Skill(s) Used | Output | Hallucinations Found | Manual Corrections |
-| :---: | :--- | :--- | :--- | :--- |
-| 1 | analytics-eng + run-commands | Minimal bootstrap (config + empty folders + dbt deps) | | |
-| 0 | analytics-eng + run-commands | Design Brief (pending approval) | | |
-| 2 | run-commands + analytics-eng | _sources.yml | | |
-| 3 | run-commands + analytics-eng | staging SQL + _stg_models.yml | | |
-| 4 | analytics-eng | intermediate SQL (relationship layer) | | |
-| 5 | analytics-eng | fct_ / dim_ / bridge_ marts | | |
-| 6 | semantic-layer + run-commands + analytics-eng | semantic_models.yml, _marts__models.yml, README.md | | |
+
+| Phase | Skill(s) Used                                 | Output                                                | Hallucinations Found | Manual Corrections |
+| ----- | --------------------------------------------- | ----------------------------------------------------- | -------------------- | ------------------ |
+| 1     | analytics-eng + run-commands                  | Minimal bootstrap (config + empty folders + dbt deps) |                      |                    |
+| 0     | analytics-eng + run-commands                  | Design Brief (pending approval)                       |                      |                    |
+| 2     | run-commands + analytics-eng                  | _sources.yml                                          |                      |                    |
+| 3     | run-commands + analytics-eng                  | staging SQL + _stg_models.yml                         |                      |                    |
+| 4     | analytics-eng                                 | intermediate SQL (relationship layer)                 |                      |                    |
+| 5     | analytics-eng                                 | fct_ / dim_ / bridge_ marts                           |                      |                    |
+| 6     | semantic-layer + run-commands + analytics-eng | semantic_models.yml, _marts__models.yml, README.md    |                      |                    |
+
 
 ---
 
 ## Quick Reference: Codegen Macros
 
-| Task | Macro | Used In |
-| :--- | :--- | :--- |
-| Scaffold source YAML from live DB | `generate_source` | Phase 0 (discovery), Phase 2 (build) |
-| Scaffold staging SQL from source | `generate_base_model` | Phase 3 |
-| Scaffold model YAML documentation | `generate_model_yaml` | Phase 3, Phase 6 |
+
+| Task                              | Macro                 | Used In                              |
+| --------------------------------- | --------------------- | ------------------------------------ |
+| Scaffold source YAML from live DB | `generate_source`     | Phase 0 (discovery), Phase 2 (build) |
+| Scaffold staging SQL from source  | `generate_base_model` | Phase 3                              |
+| Scaffold model YAML documentation | `generate_model_yaml` | Phase 3, Phase 6                     |
+
 
 ```bash
 # Substitute SCHEMA_NAME, DATABASE_NAME, SOURCE_NAME from config.md
@@ -606,7 +650,7 @@ dbt run-operation generate_model_yaml --args '{
 - Separate codegen (run command, capture output) from build (use output to write files). Agents do better when these are explicit.
 - Batch codegen calls at 3 tables max to limit context drift.
 - Phases 2–6 must reference the approved Design Brief — never re-infer tables or relationships mid-build.
-- Read [`config.md`](config.md) at the start of every phase — do not hardcode connection values in prompts.
+- Read `[config.md](config.md)` at the start of every phase — do not hardcode connection values in prompts.
 
 **Validation**
 
