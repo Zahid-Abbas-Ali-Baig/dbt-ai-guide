@@ -1,6 +1,6 @@
 # Requirements — {{project_display_name}}
 
-> Fill once per engagement. Attach with [`config.md`](config.md) for Phase 1 discovery and later phases.
+> Fill once per engagement. Attach with [`config.md`](config.md) for **Phase 1** discovery and later phases (not needed for Phase 0 bootstrap).
 >
 > Replace every `{{placeholder}}` below. Keep `DATABASE_NAME`, `SCHEMA_NAME`, and `WAREHOUSE_TYPE` aligned with [`config.md`](config.md).
 >
@@ -50,7 +50,7 @@
 - {{Optional: ERP name, SaaS tool, file feed, or other context}}
 - {{Data freshness, batch vs streaming, known quality issues}}
 
-*Provides context alongside `config.md` during Phase 1 schema discovery — not a table inventory.*
+*Provides context alongside `config.md` during Phase 1 schema discovery — not a table inventory. You may describe multiple upstream systems in prose; live codegen discovery uses `SCHEMA_NAME` from config (v1: one schema per engagement).*
 
 ---
 
@@ -60,7 +60,7 @@
 - {{Semantic layer for self-serve? BI tool expectations?}}
 - {{Preferred grains: daily, weekly, monthly}}
 
-*Feeds star-schema design, mart grains, and semantic layer expectations in the Design Brief.*
+*Feeds star-schema design, mart grains, and semantic layer expectations in the Design Brief. Semantic layer models are built only when `ENABLE_SEMANTIC_LAYER: true` in config.*
 
 ---
 
@@ -74,9 +74,9 @@
 
 ---
 
-
 ## Example (do not use as active requirements)
 
+<!--
 # Requirements — ShopSphere E-Commerce
 
 ## Domain Summary
@@ -107,3 +107,4 @@ Online retailer selling physical goods. Core processes: browse → cart → orde
 ## Constraints and Notes
 - Exclude cancelled and fully refunded orders from revenue KPIs
 - Currency assumed USD
+-->

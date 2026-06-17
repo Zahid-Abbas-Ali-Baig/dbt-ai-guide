@@ -9,19 +9,20 @@
 ## How to Use This Library
 
 1. Copy and fill [`requirements.md`](requirements.md) — goals, domain background, business questions, pain points, and any schema or source-system hints.
-2. Fill in `[config.md](config.md)` — one file for all project variables.
-3. Run **Phase 0 — Minimal Bootstrap** if no working dbt project exists yet (required before codegen discovery). Skip if `dbt_project.yml`, `profiles.yml`, and `dbt deps` already succeed.
-4. Run **Phase 1** with `config.md` and the requirements doc attached. Review the **Design Brief** output.
-5. **Stop and approve** the Design Brief before continuing. Edit it if needed.
-6. Run Phases 2–6 in sequence. Attach `config.md` + requirements doc for each phase. Each phase references the approved Design Brief — not hardcoded table lists.
+2. Fill in `[config.md](config.md)` — one file for all project variables (`PROJECT_ROOT`, connection details, `ENABLE_SEMANTIC_LAYER`, etc.).
+3. Run **Phase 0 — Minimal Bootstrap** with `config.md` only (skip if `dbt_project.yml`, `profiles.yml`, and `dbt deps` already succeed).
+4. Run **Phase 1** with `config.md` and `requirements.md` attached. Phase 1 writes the draft Design Brief to `DESIGN_BRIEF_DOC`.
+5. **Edit and approve** [`design_brief.md`](design_brief.md) — correct errors, set `Status: approved`, then continue.
+6. Run Phases 2–7 in sequence. Attach `config.md`, `requirements.md`, and `design_brief.md` for each phase. Each build phase reads the approved Design Brief from disk — not hardcoded table lists.
 7. Log every run in the **AI Execution Log** at the bottom.
 
-> **Run order:** Phase 0 (bootstrap) → Phase 1 (discovery) → approve Design Brief → Phases 2–6 (build).
+> **Run order:** Phase 0 (bootstrap) → Phase 1 (discovery) → approve `design_brief.md` → Phases 2–6 (build) → Phase 7 (validate).
 
 ```mermaid
 flowchart TD
     ConfigMd[config.md]
     ReqDoc[requirements.md]
+    BriefDoc[design_brief.md]
     Phase0[Phase0_MinimalBootstrap]
     Phase1[Phase1_Discovery_DesignBrief]
     Gate{HumanApproval}
@@ -30,16 +31,20 @@ flowchart TD
     Phase4[Phase4_Intermediate]
     Phase5[Phase5_Marts]
     Phase6[Phase6_Semantic_Docs]
+    Phase7[Phase7_Validation]
 
     ConfigMd --> Phase0
-    ReqDoc --> Phase0
     Phase0 --> Phase1
-    Phase1 --> Gate
+    ConfigMd --> Phase1
+    ReqDoc --> Phase1
+    Phase1 --> BriefDoc
+    BriefDoc --> Gate
     Gate -->|approved| Phase2
     Phase2 --> Phase3
     Phase3 --> Phase4
     Phase4 --> Phase5
     Phase5 --> Phase6
+    Phase6 --> Phase7
 ```
 
 
@@ -52,19 +57,21 @@ All connection and project identity variables live in `[config.md](config.md)`.
 
 Read `config.md` at the start of every phase and substitute values into commands and file paths.
 
+> **v1 scope:** One `SOURCE_NAME` and one `SCHEMA_NAME` per engagement. Requirements may describe multiple upstream systems in prose; live discovery uses `SCHEMA_NAME` from config.
+
 ---
 
 ## Skill Reference Matrix
 
 
-| Skill                                 | Used In                   |
-| ------------------------------------- | ------------------------- |
-| `using-dbt-for-analytics-engineering` | Phase 0, 1, 2, 3, 4, 5, 6 |
-| `running-dbt-commands`                | Phase 0, 1, 2, 3, 6       |
-| `building-dbt-semantic-layer`         | Phase 6                   |
+| Skill                                 | Used In                       |
+| ------------------------------------- | ----------------------------- |
+| `using-dbt-for-analytics-engineering` | Phase 0, 1, 2, 3, 4, 5, 6, 7 |
+| `running-dbt-commands`                | Phase 0, 1, 2, 3, 6, 7       |
+| `building-dbt-semantic-layer`         | Phase 6 (when enabled)        |
 
 
-> **Run order:** Phase 0 (bootstrap) → Phase 1 (discovery) → approve Design Brief → Phases 2–6 (build).
+> **Run order:** Phase 0 (bootstrap) → Phase 1 (discovery) → approve `design_brief.md` → Phases 2–6 (build) → Phase 7 (validate).
 
 > Install dbt Agent Skills:
 >
@@ -119,8 +126,13 @@ AI infers `{entity}`, `{source}`, and `{raw_table}` from the requirements doc an
 
 ## Project Structure
 
+Engagement folder (`PROJECT_ROOT`, default `.`):
+
 ```text
-<PROJECT_NAME>/
+./
+├── config.md
+├── requirements.md
+├── design_brief.md
 ├── dbt_project.yml
 ├── packages.yml
 ├── profiles.yml
@@ -137,22 +149,24 @@ AI infers `{entity}`, `{source}`, and `{raw_table}` from the requirements doc an
 │   │   │   ├── dim_{entity}.sql
 │   │   │   └── bridge_{entity}.sql
 │   │   └── _marts__models.yml
-│   └── semantic/
+│   └── semantic/                    # when ENABLE_SEMANTIC_LAYER: true
 │       └── semantic_models.yml
 └── README.md
 ```
 
-> `<PROJECT_NAME>` and `<SOURCE_NAME>` — substitute from `[config.md](config.md)`.
+> `<PROJECT_NAME>`, `<SOURCE_NAME>`, `PROJECT_ROOT` — substitute from `[config.md](config.md)`.
 
 ---
 
-## Design Brief Template (Phase 1 Output)
+## Design Brief Template (Phase 1 Output → `DESIGN_BRIEF_DOC`)
 
-Phase 1 produces this document. Phases 2–6 must use the **approved** Design Brief as the single source of truth. Do not invent tables, relationships, or model names not listed here.
+Phase 1 writes this document to `DESIGN_BRIEF_DOC` from config (default `design_brief.md`). Phases 2–7 must read the **approved** file as the single source of truth. Do not invent tables, relationships, or model names not listed here.
 
 # Design Brief — 
 
->  from config.md
+**Status:** pending approval
+
+> PROJECT_NAME from config.md
 
 ## 1. Domain Summary
 
@@ -238,10 +252,10 @@ Phase 1 produces this document. Phases 2–6 must use the **approved** Design Br
 
 After Phase 1, the agent must:
 
-1. Output the complete Design Brief only — no `_sources.yml`, staging SQL, or mart models yet.
-2. Output the Design Brief as plain Markdown (do not wrap it in code fences).
+1. Write the complete Design Brief to `DESIGN_BRIEF_DOC` with `Status: pending approval` at the top — no `_sources.yml`, staging SQL, or mart models yet.
+2. Write as plain Markdown in the file (not chat-only, not wrapped in code fences).
 3. Present open questions or ambiguities found during discovery.
-4. **Stop and wait** for explicit human approval or edits before Phase 2.
+4. **Stop and wait** for the human to edit `DESIGN_BRIEF_DOC`, correct errors, set `Status: approved`, then proceed to Phase 2.
 
 ---
 
@@ -249,14 +263,26 @@ After Phase 1, the agent must:
 
 Every phase prompt assumes the agent has read:
 
-1. `[config.md](config.md)` — project variables (`PROJECT_NAME`, `SCHEMA_NAME`, `SOURCE_NAME`, connection details, etc.)
-2. Requirements document — path from `REQUIREMENTS_DOC` in config.md
-3. Approved Design Brief (Phases 2–6 only)
+1. `[config.md](config.md)` — project variables (`PROJECT_ROOT`, `PROJECT_NAME`, `SCHEMA_NAME`, `SOURCE_NAME`, `ENABLE_SEMANTIC_LAYER`, connection details, etc.)
+2. Requirements document — path from `REQUIREMENTS_DOC` in config.md (Phase 1+ only; Phase 0 uses config only)
+3. Design Brief file — path from `DESIGN_BRIEF_DOC` (Phases 2–7 only; must have `Status: approved` before Phase 2)
 
 Each phase prompt opens with:
 
 ```
-Read config.md and substitute all project variables. Read the requirements document at REQUIREMENTS_DOC.
+Read config.md and substitute all project variables.
+```
+
+Phases 1–7 also open with:
+
+```
+Read the requirements document at REQUIREMENTS_DOC.
+```
+
+Phases 2–7 also open with:
+
+```
+Read DESIGN_BRIEF_DOC. Verify Status is approved before building.
 ```
 
 ---
@@ -271,15 +297,15 @@ Read config.md and substitute all project variables. Read the requirements docum
 ```
 You are an analytics engineer using the using-dbt-for-analytics-engineering and running-dbt-commands skills.
 
-Read config.md and substitute all project variables. Read the requirements document at REQUIREMENTS_DOC.
+Read config.md and substitute all project variables. Do not read requirements.md in this phase.
 
-Create minimal dbt project bootstrap only — config and empty folders. No sources, no models, no SQL.
+Create minimal dbt project bootstrap only under PROJECT_ROOT (current directory: `.`) — config and empty folders. No sources, no models, no SQL.
 
 If the project directory is completely empty, you may run `dbt init` to create the base folder, then delete `models/example/` and any sample files. Prefer writing files directly when the directory already exists.
 
 Using config.md:
 
-1. dbt_project.yml
+1. dbt_project.yml (at PROJECT_ROOT)
    - Project name: PROJECT_NAME
    - Materializations: staging → view (schema STAGING_SCHEMA), intermediate → view (schema INTERMEDIATE_SCHEMA), marts → table (schema MARTS_SCHEMA)
    - Model paths: models. Target path: target.
@@ -297,7 +323,7 @@ Using config.md:
    - models/staging/SOURCE_NAME/
    - models/intermediate/
    - models/marts/
-   - models/semantic/
+   - models/semantic/ (even when ENABLE_SEMANTIC_LAYER is false)
 
 5. Run: dbt deps
 6. Confirm: dbt debug (or dbt parse) succeeds and warehouse connection is valid.
@@ -310,7 +336,7 @@ Do not create _sources.yml or any model SQL. Proceed to Phase 1 after bootstrap 
 ## PHASE 1 — Discovery & Design Brief
 
 **Skills:** `using-dbt-for-analytics-engineering`, `running-dbt-commands`
-**Output:** Design Brief (all 10 sections above) — pending human approval
+**Output:** `DESIGN_BRIEF_DOC` with full Design Brief (all 10 sections above) — `Status: pending approval`
 **Prerequisite:** `[config.md](config.md)` filled in; requirements document; **Phase 0 bootstrap complete** (`dbt deps` succeeded)
 
 ```
@@ -353,8 +379,9 @@ Using config.md values, discover the live schema:
 
 7. Draft a KPI traceability matrix (business question → source → staging → intermediate → mart → metric).
 
-STOP HERE. Output the Design Brief and open questions only.
-Do not create _sources.yml, staging SQL, intermediate SQL, or mart models until the Design Brief is approved.
+8. Write the complete Design Brief to DESIGN_BRIEF_DOC (plain markdown file). Set `Status: pending approval` at the top.
+
+STOP HERE. Do not create _sources.yml, staging SQL, intermediate SQL, or mart models until DESIGN_BRIEF_DOC has `Status: approved`.
 ```
 
 ---
@@ -363,16 +390,17 @@ Do not create _sources.yml, staging SQL, intermediate SQL, or mart models until 
 
 **Skills:** `running-dbt-commands`, `using-dbt-for-analytics-engineering`
 **Output:** `models/staging/<SOURCE_NAME>/_sources.yml` (SOURCE_NAME from config.md)
-**Prerequisite:** Approved Design Brief; Phase 0 bootstrap complete
+**Prerequisite:** `DESIGN_BRIEF_DOC` has `Status: approved`; Phase 0 bootstrap complete
 
 ```
 You are an analytics engineer using the running-dbt-commands and using-dbt-for-analytics-engineering skills.
 
 Read config.md and substitute all project variables. Read the requirements document at REQUIREMENTS_DOC.
+Read DESIGN_BRIEF_DOC. Verify Status is approved before building.
 
-Read the approved Design Brief. Use work_batches for sources and source inventory for table list.
+Use work_batches for sources and source inventory from DESIGN_BRIEF_DOC.
 
-For each batch in the Design Brief work_batches (sources phase):
+For each batch in DESIGN_BRIEF_DOC work_batches (sources phase):
 
 1. Run codegen:
    dbt run-operation generate_source --args '{
@@ -384,13 +412,13 @@ For each batch in the Design Brief work_batches (sources phase):
 
 2. Build or append source blocks in models/staging/<SOURCE_NAME>/_sources.yml:
    - source name: SOURCE_NAME (from config.md)
-   - Business-focused table descriptions tied to domain summary in Design Brief
+   - Business-focused table descriptions tied to domain summary in DESIGN_BRIEF_DOC
    - Column documentation in plain English
    - unique + not_null tests on PKs from relationship graph
    - relationships + not_null tests on FKs from relationship graph
    - accepted_values tests on status/type columns — use values discovered via dbt show, not guessed
 
-Do not invent tables not in the Design Brief source inventory.
+Do not invent tables not in DESIGN_BRIEF_DOC source inventory.
 After all batches: run dbt compile and confirm _sources.yml parses.
 ```
 
@@ -399,17 +427,18 @@ After all batches: run dbt compile and confirm _sources.yml parses.
 ## PHASE 3 — Staging Models
 
 **Skills:** `running-dbt-commands`, `using-dbt-for-analytics-engineering`
-**Output:** `stg_<SOURCE_NAME>__{raw_table}.sql` per Design Brief; `_stg_<SOURCE_NAME>__models.yml` (SOURCE_NAME from config.md)
+**Output:** `stg_<SOURCE_NAME>__{raw_table}.sql` per DESIGN_BRIEF_DOC; `_stg_<SOURCE_NAME>__models.yml` (SOURCE_NAME from config.md)
 **Prerequisite:** Phase 2 complete; `_sources.yml` compiles
 
 ```
 You are an analytics engineer using the running-dbt-commands and using-dbt-for-analytics-engineering skills.
 
 Read config.md and substitute all project variables. Read the requirements document at REQUIREMENTS_DOC.
+Read DESIGN_BRIEF_DOC. Verify Status is approved before building.
 
-Read the approved Design Brief staging model list and column standardization plan.
+Read staging model list and column standardization plan from DESIGN_BRIEF_DOC.
 
-For each staging model in the Design Brief (use work_batches for staging, max 3 tables per batch):
+For each staging model in DESIGN_BRIEF_DOC (use work_batches for staging, max 3 tables per batch):
 
 1. Run codegen per table:
    dbt run-operation generate_base_model --args '{
@@ -424,7 +453,7 @@ For each staging model in the Design Brief (use work_batches for staging, max 3 
 
 3. After all staging SQL files exist, generate documentation:
    dbt run-operation generate_model_yaml --args '{
-     "model_names": [<all stg model names from Design Brief>]
+     "model_names": [<all stg model names from DESIGN_BRIEF_DOC>]
    }'
 
 4. Build models/staging/<SOURCE_NAME>/_stg_<SOURCE_NAME>__models.yml:
@@ -441,30 +470,31 @@ Run dbt compile, then dbt test --select staging. Fix failures before Phase 4.
 ## PHASE 4 — Intermediate Relationship Layer
 
 **Skills:** `using-dbt-for-analytics-engineering`
-**Output:** All models in Design Brief `relationship_resolution_plan`
+**Output:** All models in DESIGN_BRIEF_DOC `relationship_resolution_plan`
 **Prerequisite:** Phase 3 complete; staging tests pass
 
 ```
 You are an analytics engineer using the using-dbt-for-analytics-engineering skill.
 
 Read config.md and substitute all project variables. Read the requirements document at REQUIREMENTS_DOC.
+Read DESIGN_BRIEF_DOC. Verify Status is approved before building.
 
-Read the approved Design Brief relationship resolution plan and relationship graph.
+Read relationship resolution plan and relationship graph from DESIGN_BRIEF_DOC.
 
-Build every intermediate model listed in the Design Brief. This phase owns ALL cross-table logic.
+Build every intermediate model listed in DESIGN_BRIEF_DOC. This phase owns ALL cross-table logic.
 
 For each intermediate model:
 
 1. Join / enrich (int_{fact}__{dim}_enriched):
    - Join staging fact to staging dimension on validated FK from relationship graph
-   - Expose has_valid_{fk} flag or filter orphans per Design Brief orphan counts
+   - Expose has_valid_{fk} flag or filter orphans per DESIGN_BRIEF_DOC orphan counts
 
 2. Bridge resolve (int_{left}__{right}_joined):
    - Join bridge table to both parent entities
    - Preserve bridge grain; attach attributes from both sides
 
 3. Aggregate prep (int_{entity}__{metric}_summary):
-   - Roll up measures needed by dim or fct marts in Design Brief star schema
+   - Roll up measures needed by dim or fct marts in DESIGN_BRIEF_DOC star schema
    - Group by entity PK; expose volume, financial, and temporal metrics as needed by KPI map
 
 4. Reconcile (int_{metric}__reconciled):
@@ -474,10 +504,10 @@ For each intermediate model:
 Rules:
 - Use {{ ref() }} for all staging and intermediate references — never source()
 - Never skip to marts with raw staging joins — all cross-table logic lives here
-- Validate join results with dbt show; confirm grain matches Design Brief output grain column
+- Validate join results with dbt show; confirm grain matches DESIGN_BRIEF_DOC output grain column
 - Run dbt compile after each model; run dbt test --select intermediate when YAML exists
 
-Output all intermediate SQL files listed in the Design Brief.
+Output all intermediate SQL files listed in DESIGN_BRIEF_DOC.
 ```
 
 ---
@@ -485,15 +515,16 @@ Output all intermediate SQL files listed in the Design Brief.
 ## PHASE 5 — Mart Models
 
 **Skills:** `using-dbt-for-analytics-engineering`
-**Output:** `fct_{entity}.sql`, `dim_{entity}.sql`, `bridge_{entity}.sql` per Design Brief star schema
+**Output:** `fct_{entity}.sql`, `dim_{entity}.sql`, `bridge_{entity}.sql` per DESIGN_BRIEF_DOC star schema
 **Prerequisite:** Phase 4 complete
 
 ```
 You are an analytics engineer using the using-dbt-for-analytics-engineering skill.
 
 Read config.md and substitute all project variables. Read the requirements document at REQUIREMENTS_DOC.
+Read DESIGN_BRIEF_DOC. Verify Status is approved before building.
 
-Read the approved Design Brief mart star schema section.
+Read mart star schema section from DESIGN_BRIEF_DOC.
 
 Build every mart model listed. Use naming conventions: fct_{entity}, dim_{entity}, bridge_{entity}.
 
@@ -501,23 +532,23 @@ For each mart:
 
 1. fct_{entity}:
    - Consume intermediate enriched fact outputs — not raw staging joins
-   - Grain: as declared in Design Brief star schema
+   - Grain: as declared in DESIGN_BRIEF_DOC star schema
    - Retain FK columns for dimension joins in BI tools
    - Materialization: table
 
 2. dim_{entity}:
    - Base attributes from staging dimension model
-   - Behavioral rollups from intermediate aggregate models where Design Brief specifies
+   - Behavioral rollups from intermediate aggregate models where DESIGN_BRIEF_DOC specifies
    - Optional segmentation column using CASE logic derived from KPI map and requirements doc — not hardcoded tiers
    - Materialization: table
 
 3. bridge_{entity}:
    - Consume intermediate bridge resolution output
-   - Preserve associative grain from Design Brief
+   - Preserve associative grain from DESIGN_BRIEF_DOC
    - Materialization: table
 
 Rules:
-- Organize files under subject area folders from Design Brief star schema
+- Organize files under subject area folders from DESIGN_BRIEF_DOC star schema
 - No new joins that bypass intermediate models
 - Use {{ ref() }} only
 - Run dbt compile; validate grain with dbt show per mart
@@ -529,50 +560,83 @@ Output all mart SQL files.
 
 ## PHASE 6 — Semantic Layer & Documentation
 
-**Skills:** `building-dbt-semantic-layer`, `running-dbt-commands`, `using-dbt-for-analytics-engineering`
-**Output:** `semantic_models.yml`, `_marts__models.yml`, `README.md`, completed KPI traceability matrix
+**Skills:** `building-dbt-semantic-layer` (when enabled), `running-dbt-commands`, `using-dbt-for-analytics-engineering`
+**Output:** `_marts__models.yml`, project `README.md`, completed KPI traceability matrix; `semantic_models.yml` when `ENABLE_SEMANTIC_LAYER: true`
 **Prerequisite:** Phase 5 complete
 
 ```
 You are an analytics engineer using the building-dbt-semantic-layer, running-dbt-commands, and using-dbt-for-analytics-engineering skills.
 
-Read config.md and substitute all project variables. Read the requirements document at REQUIREMENTS_DOC.
+Read config.md and substitute all project variables. Read ENABLE_SEMANTIC_LAYER.
+Read the requirements document at REQUIREMENTS_DOC.
+Read DESIGN_BRIEF_DOC. Verify Status is approved before building.
 
-Read the approved Design Brief semantic metrics list and KPI map.
+Read semantic metrics list and KPI map from DESIGN_BRIEF_DOC.
+
+If ENABLE_SEMANTIC_LAYER is true:
 
 1. models/semantic/semantic_models.yml
-   - Register all fct_ and dim_ marts from Design Brief star schema
-   - Define every metric from Design Brief section 9
+   - Register all fct_ and dim_ marts from DESIGN_BRIEF_DOC star schema
+   - Define every metric from DESIGN_BRIEF_DOC section 9
    - For each metric: type (simple / ratio / derived), measure, filter, label, business glossary description
    - Configure entities, dimensions, measures, grains, and join paths per MetricFlow spec
+
+If ENABLE_SEMANTIC_LAYER is false:
+   - Skip models/semantic/semantic_models.yml
+   - Note in README and KPI matrix: metrics are BI-defined, no semantic layer
 
 2. models/marts/_marts__models.yml
    - Run codegen:
      dbt run-operation generate_model_yaml --args '{
-       "model_names": [<all fct_, dim_, bridge_ model names from Design Brief>]
+       "model_names": [<all fct_, dim_, bridge_ model names from DESIGN_BRIEF_DOC>]
      }'
-   - Enrich with semantic descriptions and KPI linkage from Design Brief
+   - Enrich with semantic descriptions and KPI linkage from DESIGN_BRIEF_DOC
    - unique + not_null on PKs; relationships tests on FKs between marts
 
 3. README.md — project runbook:
    - Problem statement from requirements doc domain summary
    - Completed KPI traceability matrix (staging → intermediate → mart → metric)
-   - Layer map: staging → intermediate → marts → semantic
-   - Environment setup: dbt deps, profiles.yml, warehouse connection
+   - Layer map: staging → intermediate → marts → semantic (or note semantic skipped)
+   - Environment setup: dbt deps, profiles.yml, warehouse connection, PROJECT_ROOT
    - Execution commands: dbt run, dbt test, dbt build
    - Agent skills and phase sequence used
    - Codegen macro reference
 
 4. Finalize KPI traceability matrix with actual model names from this project.
+   - When ENABLE_SEMANTIC_LAYER is false, use "N/A — BI-defined" in Semantic Metric column
 
-Run dbt compile. Validate semantic layer config parses.
+Run dbt compile. When ENABLE_SEMANTIC_LAYER is true, validate semantic layer config parses.
+```
+
+---
+
+## PHASE 7 — Final Validation
+
+**Skills:** `running-dbt-commands`, `using-dbt-for-analytics-engineering`
+**Output:** Passing `dbt build`, grain checks, updated AI Execution Log
+**Prerequisite:** Phase 6 complete
+
+```
+You are an analytics engineer using the running-dbt-commands and using-dbt-for-analytics-engineering skills.
+
+Read config.md and substitute all project variables.
+Read the requirements document at REQUIREMENTS_DOC.
+Read DESIGN_BRIEF_DOC.
+
+1. Run dbt build --select staging+ (or full project if small enough)
+2. Fix any compile or test failures, or document blockers in the AI Execution Log
+3. Run dbt show on one fct_ mart and one dim_ mart to confirm grain matches DESIGN_BRIEF_DOC
+4. When ENABLE_SEMANTIC_LAYER is true, confirm semantic_models.yml compiles
+5. Update the AI Execution Log row for Phase 7 with results, hallucinations found, and manual corrections
+
+Do not add new models or change DESIGN_BRIEF_DOC in this phase — validation and fixes only.
 ```
 
 ---
 
 ## KPI Traceability Matrix Template
 
-Populate during Phase 1 (draft) and finalize in Phase 6.
+Populate during Phase 1 (draft in DESIGN_BRIEF_DOC) and finalize in Phase 6 (or Phase 7 when semantic layer disabled).
 
 
 | Business Question | Source Tables | Staging Models | Intermediate Model | Mart Model | Semantic Metric |
@@ -590,12 +654,13 @@ Track every phase run. Documenting AI reliability is part of the deliverable.
 | Phase | Skill(s) Used                                 | Output                                                | Hallucinations Found | Manual Corrections |
 | ----- | --------------------------------------------- | ----------------------------------------------------- | -------------------- | ------------------ |
 | 0     | analytics-eng + run-commands                  | Minimal bootstrap (config + empty folders + dbt deps) |                      |                    |
-| 1     | analytics-eng + run-commands                  | Design Brief (pending approval)                       |                      |                    |
+| 1     | analytics-eng + run-commands                  | DESIGN_BRIEF_DOC (pending approval)                   |                      |                    |
 | 2     | run-commands + analytics-eng                  | _sources.yml                                          |                      |                    |
 | 3     | run-commands + analytics-eng                  | staging SQL + _stg_models.yml                         |                      |                    |
 | 4     | analytics-eng                                 | intermediate SQL (relationship layer)                 |                      |                    |
 | 5     | analytics-eng                                 | fct_ / dim_ / bridge_ marts                           |                      |                    |
-| 6     | semantic-layer + run-commands + analytics-eng | semantic_models.yml, _marts__models.yml, README.md    |                      |                    |
+| 6     | semantic-layer + run-commands + analytics-eng | semantic_models.yml (if enabled), _marts__models.yml, README.md |          |                    |
+| 7     | run-commands + analytics-eng                  | dbt build pass, grain validation, execution log       |                      |                    |
 
 
 ---
@@ -649,7 +714,7 @@ dbt run-operation generate_model_yaml --args '{
 - Always declare the skill at the top: `You are an analytics engineer using the <skill> skill.`
 - Separate codegen (run command, capture output) from build (use output to write files). Agents do better when these are explicit.
 - Batch codegen calls at 3 tables max to limit context drift.
-- Phases 2–6 must reference the approved Design Brief — never re-infer tables or relationships mid-build.
+- Phases 2–7 must read `DESIGN_BRIEF_DOC` with `Status: approved` — never re-infer tables or relationships mid-build.
 - Read `[config.md](config.md)` at the start of every phase — do not hardcode connection values in prompts.
 
 **Validation**
@@ -657,6 +722,7 @@ dbt run-operation generate_model_yaml --args '{
 - Run `dbt compile` after every phase.
 - Run `dbt test --select staging` after Phase 3 before building intermediate models.
 - Run `dbt show` to verify grain and join cardinality after Phase 4 and Phase 5.
+- Run `dbt build --select staging+` in Phase 7 as the final integration check.
 - Never trust boolean flags or accepted_values the AI derives — verify against live data.
 
 **Common Hallucinations to Watch For**
@@ -673,7 +739,7 @@ dbt run-operation generate_model_yaml --args '{
 - Any financial calculation — verify formula against requirements document
 - FK relationships — confirm keys and orphan rates in the warehouse before accepting
 - Semantic layer grain — review against actual BI query patterns
-- Design Brief classification — correct fact / dim / bridge labels before Phase 2
+- Design Brief classification — correct fact / dim / bridge labels in DESIGN_BRIEF_DOC before Phase 2
 
 ---
 
@@ -683,7 +749,7 @@ This library uses **dbt codegen only** for schema discovery. When Postgres or Re
 
 ```text
 Run order with optional MCP (after Phase 0 bootstrap):
-  list_schemas → list_tables → list_columns → generate_source (Phase 1) → approve Design Brief → Phases 2–6
+  list_schemas → list_tables → list_columns → generate_source (Phase 1) → approve DESIGN_BRIEF_DOC → Phases 2–7
 ```
 
 Do not use MCP and codegen in conflicting ways — MCP informs the relationship graph; codegen scaffolds YAML and SQL.
