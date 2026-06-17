@@ -1,12 +1,12 @@
 # Project Config
 
-> Fill once per engagement. Attach alongside [`dbt_ai_prompts_generalized.md`](dbt_ai_prompts_generalized.md) when running any phase prompt.
+> Fill once per engagement. Attach alongside [`dbt_ai_agent_prompts_generalized.md`](dbt_ai_agent_prompts_generalized.md) when running any phase prompt.
 
 ## How to Use
 
 1. Replace every `{{placeholder}}` below with your project values.
-2. Set `CLIENT_REQUIREMENTS_DOC` to the path or filename of your freeform client requirements markdown.
-3. Attach this file + the client requirements doc when running phase prompts.
+2. Set `REQUIREMENTS_DOC` to the path or filename of your requirements markdown (default: `requirements.md`).
+3. Attach this file + the requirements doc when running phase prompts.
 4. The agent reads `config.md` at the start of every phase and substitutes values into commands and file paths.
 
 > **Security:** Do not commit real passwords. Use a local-only copy of this file or environment variables for production credentials.
@@ -16,7 +16,7 @@
 ## Variables
 
 ```
-CLIENT_REQUIREMENTS_DOC:  {{path/to/client-requirements.md}}
+REQUIREMENTS_DOC:    requirements.md
 
 PROJECT_NAME:        {{my_project}}           # dbt project name, no spaces
 WAREHOUSE_TYPE:      {{postgres}}             # postgres | snowflake | redshift | bigquery | duckdb
@@ -34,11 +34,13 @@ INTERMEDIATE_SCHEMA: {{intermediate}}
 MARTS_SCHEMA:        {{marts}}
 ```
 
-> **Not in this file:** table lists, fact/dimension classifications, column renames, join keys, metrics, or business questions. Those are inferred from the client doc + schema discovery in Phase 0.
+> **Not in this file:** table lists, fact/dimension classifications, column renames, join keys, metrics, or business questions. Those are inferred from the requirements doc + schema discovery in Phase 1.
+
+> **Alignment:** `DATABASE_NAME`, `SCHEMA_NAME`, and `WAREHOUSE_TYPE` here should match the source-system hints in [`requirements.md`](requirements.md).
 
 ---
 
-## Example (commented — do not use as active config)
+## Example (do not use as active config)
 
 PROJECT_NAME:        shopsphere
 WAREHOUSE_TYPE:      postgres
@@ -54,3 +56,4 @@ SOURCE_NAME:         ecommerce
 STAGING_SCHEMA:      staging
 INTERMEDIATE_SCHEMA: intermediate
 MARTS_SCHEMA:        marts
+
