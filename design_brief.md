@@ -6,6 +6,8 @@
 >
 > **Approval:** Edit this file in place, correct any errors, then change status to `approved` before running Phase 2.
 >
+> **After client feedback:** The team re-runs **Feedback Re-run** per [`client_feedback.md`](client_feedback.md). Pass 1 updates `requirements.md` (business) and this file (technical); sets `Status: pending approval` **here only** and **stops**. After human approval (`Status: approved` on this file), pass 2 implements listed phases from **this document**.
+>
 > Phases 2–7 read `DESIGN_BRIEF_DOC` from [`config.md`](config.md) — do not rely on chat history.
 
 ---

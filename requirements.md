@@ -2,6 +2,8 @@
 
 > Fill once per engagement. Attach with [`config.md`](config.md) for **Phase 1** discovery and later phases (not needed for Phase 0 bootstrap).
 >
+> **No `Status` field on this file.** After client feedback, the agent updates business questions and notes here on Feedback Re-run pass 1. **Technical implementation follows [`design_brief.md`](design_brief.md)** after that file is approved.
+>
 > Replace every `{{placeholder}}` below. Keep `DATABASE_NAME`, `SCHEMA_NAME`, and `WAREHOUSE_TYPE` aligned with [`config.md`](config.md).
 >
 > **Do not list tables, join keys, column renames, or metric formulas here** — Phase 1 infers those from live schema discovery plus this document.

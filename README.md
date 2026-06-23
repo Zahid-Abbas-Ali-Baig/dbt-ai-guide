@@ -2,23 +2,31 @@
 
 ## Purpose
 
-A **prompt library + config template** for building a production dbt project with an AI coding agent. You provide a **requirements document** ([`requirements.md`](requirements.md)) — the agent uses it (plus live schema discovery) to generate a full dbt project through phased prompts.
+A **prompt library + config template** for building a production dbt project with an AI coding agent. You provide [`requirements.md`](requirements.md); the agent discovers schema and builds through phased prompts (0–8).
 
-## Usage
+## Initial build
 
-1. Copy and fill [`requirements.md`](requirements.md) — domain context, business questions, and source-system hints.
-2. Fill in [`config.md`](config.md) — `PROJECT_ROOT` (`.`), warehouse connection, `ENABLE_SEMANTIC_LAYER`, and paths to `requirements.md` / `design_brief.md`.
-3. Run **Phase 0** with `config.md` only — bootstrap the dbt project in the current directory.
-4. Run **Phase 1** with `config.md` + `requirements.md` — discovery writes [`design_brief.md`](design_brief.md).
-5. **Approve the Design Brief** — edit `design_brief.md`, set `Status: approved`.
-6. In your AI agent for Phases 2–7, attach:
-   - config.md
-   - requirements.md
-   - design_brief.md
-   - phase prompts from [`dbt_ai_agent_prompts_generalized.md`](dbt_ai_agent_prompts_generalized.md)
-7. Run phases in order:
-   - **Phase 0** — Bootstrap (skip if dbt project already works)
-   - **Phase 1** — Discovery → `design_brief.md`
-   - **Approve** — edit `design_brief.md`, set `Status: approved`
-   - **Phases 2–6** — Build: sources → staging → intermediate → marts → docs (+ semantic layer if enabled)
-   - **Phase 7** — Final validation: `dbt build`, grain checks, execution log
+1. Fill [`requirements.md`](requirements.md) and [`config.md`](config.md).
+2. Run **Phase 0** → **Phase 1** → approve [`design_brief.md`](design_brief.md).
+3. Run **Phases 2–7** (dbt build). Run **Phase 8** if `ENABLE_BI_DELIVERY: true`.
+4. Deliver to client.
+
+## Client feedback (after review)
+
+1. **Client** sends what is wrong or how a metric should be defined.
+2. **Data engineer + analyst** fill [`client_feedback.md`](client_feedback.md) — what they said, agreed fix, which phases to re-run.
+3. Run the **Feedback Re-run** prompt (in [`dbt_ai_agent_prompts_generalized.md`](dbt_ai_agent_prompts_generalized.md)) with `config.md`, `requirements.md`, `design_brief.md`, and `client_feedback.md` attached — **pass 1** updates both docs; sets `Status: pending approval` on **design_brief.md only**; **stops**.
+4. **Review** both docs; set `Status: approved` on **design_brief.md** only, then run **Feedback Re-run** again — **pass 2** implements from the **approved design brief** (dbt + BI).
+5. Deliver again. Repeat until sign-off.
+
+The team owns `client_feedback.md`. `requirements.md` carries business context (no status field). **Implementation follows `design_brief.md` only** after you approve it.
+
+## Files
+
+| File | Role |
+| ---- | ---- |
+| [`config.md`](config.md) | Connection, paths, `ENABLE_BI_DELIVERY` |
+| [`requirements.md`](requirements.md) | Business questions |
+| [`design_brief.md`](design_brief.md) | Phase 1 output (technical KPI map) |
+| [`client_feedback.md`](client_feedback.md) | Client review intake + phases to re-run |
+| [`dbt_ai_agent_prompts_generalized.md`](dbt_ai_agent_prompts_generalized.md) | All prompts (0–8 + Feedback Re-run) |
