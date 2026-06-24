@@ -31,7 +31,7 @@ List every phase number needed **once** (union of the Phases column above):
 > **5** — mart columns or grain  
 > **6** — semantic layer metrics  
 > **7** — `dbt build` + tests (almost always include if 3–6 ran)  
-> **8** — BI measures or report (when `ENABLE_BI_DELIVERY: true`)
+> **8** — DAX measures or PBIP report pages/visuals under `BI_PBIP_DIR`
 
 ---
 

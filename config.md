@@ -36,19 +36,21 @@ DB_THREADS:          {{4}}
 SOURCE_NAME:         {{my_source}}            # v1: one source name in _sources.yml
 STAGING_SCHEMA:      {{staging}}
 INTERMEDIATE_SCHEMA: {{intermediate}}
-MARTS_SCHEMA:        {{marts}}
+MARTS_SCHEMA:        {{marts}}              # default BI semantic model source (Phase 8)
 
 ENABLE_SEMANTIC_LAYER: {{true}}             # true | false — skip semantic_models.yml when false
-ENABLE_BI_DELIVERY:    {{false}}            # true | false — run Phase 8 when BI tool measures/report are in scope
-BI_TOOL:               {{powerbi}}          # powerbi | looker | tableau | other — for Phase 8 guidance only
-BI_BUILD_GUIDE_DOC:    {{bi/report_build_guide.txt}}  # optional page/measure build instructions for Phase 8
+
+BI_TOOL:               {{powerbi}}          # powerbi — Phase 8 always delivers a PBIP project
+BI_PBIP_DIR:           {{powerbi-project}}  # folder under PROJECT_ROOT; human saves .pbip + linked .Report/.SemanticModel here; agent edits all artifacts in this folder
 ```
 
 > **Not in this file:** table lists, fact/dimension classifications, column renames, join keys, metrics, or business questions. Those are inferred from the requirements doc + schema discovery in Phase 1.
 
 > **Alignment:** `DATABASE_NAME`, `SCHEMA_NAME`, and `WAREHOUSE_TYPE` here should match the source-system hints in [`requirements.md`](requirements.md).
 
-> **v1 scope:** One `SOURCE_NAME` and one `SCHEMA_NAME` per engagement. Additional source schemas require a future config extension.
+> **Phase 8 human step:** Human creates `BI_PBIP_DIR` and saves an empty `.pbip` into that folder in Power BI Desktop (Desktop creates linked `.Report/` and `.SemanticModel/` siblings) before Phase 8.
+
+> **Phase 8 BI source:** Power BI imports from `MARTS_SCHEMA` (presentation layer), not `SCHEMA_NAME` (raw source). Confirm alignment in `dbt_project.yml` (`models.marts.+schema`).
 
 ---
 
@@ -71,8 +73,7 @@ INTERMEDIATE_SCHEMA: intermediate
 MARTS_SCHEMA:        marts
 
 ENABLE_SEMANTIC_LAYER: true
-ENABLE_BI_DELIVERY: true
 BI_TOOL: powerbi
-BI_BUILD_GUIDE_DOC: bi/report_build_guide.txt
+BI_PBIP_DIR: powerbi-project
 
 -->

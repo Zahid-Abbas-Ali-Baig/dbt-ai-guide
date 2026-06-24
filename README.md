@@ -8,7 +8,7 @@ A **prompt library + config template** for building a production dbt project wit
 
 1. Fill [`requirements.md`](requirements.md) and [`config.md`](config.md).
 2. Run **Phase 0** → **Phase 1** → approve [`design_brief.md`](design_brief.md).
-3. Run **Phases 2–7** (dbt build). Run **Phase 8** if `ENABLE_BI_DELIVERY: true`.
+3. Run **Phases 2–8** (dbt build + PBIP delivery). **Before Phase 8 (human):** create `BI_PBIP_DIR` and save an empty `.pbip` into that folder in Power BI Desktop — do not run Phase 8 until done.
 4. Deliver to client.
 
 ## Client feedback (after review)
@@ -25,7 +25,7 @@ The team owns `client_feedback.md`. `requirements.md` carries business context (
 
 | File | Role |
 | ---- | ---- |
-| [`config.md`](config.md) | Connection, paths, `ENABLE_BI_DELIVERY` |
+| [`config.md`](config.md) | Connection, paths, `BI_PBIP_DIR` |
 | [`requirements.md`](requirements.md) | Business questions |
 | [`design_brief.md`](design_brief.md) | Phase 1 output (technical KPI map) |
 | [`client_feedback.md`](client_feedback.md) | Client review intake + phases to re-run |

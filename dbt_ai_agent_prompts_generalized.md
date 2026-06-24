@@ -13,12 +13,13 @@
 3. Run **Phase 0 — Minimal Bootstrap** with `config.md` only (skip if `dbt_project.yml`, `profiles.yml`, and `dbt deps` already succeed).
 4. Run **Phase 1** with `config.md` and `requirements.md` attached. Phase 1 writes the draft Design Brief to `DESIGN_BRIEF_DOC`.
 5. **Edit and approve** [`design_brief.md`](design_brief.md) — correct errors, set `Status: approved`, then continue.
-6. Run Phases 2–7 in sequence. Attach `config.md`, `requirements.md`, and `design_brief.md` for each phase. Each build phase reads the approved Design Brief from disk — not hardcoded table lists.
-7. When `ENABLE_BI_DELIVERY: true` in config, run **Phase 8** after Phase 7.
-8. Deliver to client. When the client sends changes, the **data engineer and analyst** fill [`client_feedback.md`](client_feedback.md), then run **Feedback Re-run Pass 1** (docs only — no Pass 2 phrase), approve `design_brief.md`, then **Feedback Re-run Pass 2** (with explicit confirmation phrase).
-9. Log every run in the **AI Execution Log** at the bottom.
+6. Run Phases 2–8 in sequence. Attach `config.md`, `requirements.md`, and `design_brief.md` for each phase. Each build phase reads the approved Design Brief from disk — not hardcoded table lists.
+7. **Before Phase 8 (human step — required):** Create `BI_PBIP_DIR`, save a `.pbip` with TMDL enabled, **import all Design Brief §8 mart tables** (plus any §9 extras such as `fct_refunds`) from the proved mart schema (`BI_SEMANTIC_SCHEMA` — often `{profiles_schema}_{MARTS_SCHEMA}`), wire relationships incrementally in Desktop, and **refresh until all tables load**. Close Desktop and save. **Do not run Phase 8 until refresh succeeds.**
+8. Run **Phase 8 — BI Delivery** after Phase 7 and the human Desktop import. The agent adds **`_KPIs` measures**, a **wireframe for human approval**, then **report pages/visuals** — not partitions, tables, or relationships.
+9. Deliver to client. When the client sends changes, the **data engineer and analyst** fill [`client_feedback.md`](client_feedback.md), then run **Feedback Re-run Pass 1** (docs only — no Pass 2 phrase), approve `design_brief.md`, then **Feedback Re-run Pass 2** (with explicit confirmation phrase).
+10. Log every run in the **AI Execution Log** at the bottom.
 
-> **Initial build:** Phase 0 → Phase 1 → approve `design_brief.md` → Phases 2–6 → Phase 7 → Phase 8 (optional).
+> **Initial build:** Phase 0 → Phase 1 → approve `design_brief.md` → Phases 2–6 → Phase 7 → human Desktop mart import → Phase 8 (KPIs + report) → deliver.
 >
 > **Client feedback:** Client comments → team fills `client_feedback.md` → **Feedback Re-run Pass 1** (agent resets Status, updates docs, stops) → human approves `design_brief.md` → **Feedback Re-run Pass 2** (message includes e.g. `Design brief is approved — continue with Pass 2`) → deliver again.
 
@@ -49,10 +50,9 @@ flowchart TD
     Phase4 --> Phase5
     Phase5 --> Phase6
     Phase6 --> Phase7
-    Phase7 --> Phase8opt{ENABLE_BI_DELIVERY?}
-    Phase8opt -->|true| Phase8[Phase8_BI_Delivery]
-    Phase8opt -->|false| Deliver[Deliver_to_client]
-    Phase8 --> Deliver
+    Phase7 --> HumanPBIP[Human_Desktop_mart_import]
+    HumanPBIP --> Phase8[Phase8_KPIs_and_report]
+    Phase8 --> Deliver[Deliver_to_client]
 ```
 
 ### Client feedback (post-delivery)
@@ -91,9 +91,10 @@ Read `config.md` at the start of every phase and substitute values into commands
 
 | Skill                                 | Used In                              |
 | ------------------------------------- | ------------------------------------ |
-| `using-dbt-for-analytics-engineering` | Phase 0, 1, 2, 3, 4, 5, 6, 7, Feedback Re-run |
+| `using-dbt-for-analytics-engineering` | Phase 0, 1, 2, 3, 4, 5, 6, 7, 8, Feedback Re-run |
 | `running-dbt-commands`                | Phase 0, 1, 2, 3, 6, 7, Feedback Re-run       |
 | `building-dbt-semantic-layer`         | Phase 6 (when enabled)                        |
+| Power BI Modeling MCP (when available)| Phase 8, Feedback Re-run (Phase 8 listed)     |
 
 
 > **Client feedback:** One **Feedback Re-run** prompt after the team fills `client_feedback.md`.
@@ -178,6 +179,12 @@ Engagement folder (`PROJECT_ROOT`, default `.`):
 │   │   └── _marts__models.yml
 │   └── semantic/                    # when ENABLE_SEMANTIC_LAYER: true
 │       └── semantic_models.yml
+├── powerbi-project/                 # BI_PBIP_DIR — human saves .pbip + imports marts; agent adds _KPIs + report
+│   ├── {{project}}.pbip             # entry file (links to Report + SemanticModel)
+│   ├── {{project}}.SemanticModel/
+│   │   └── definition/              # TMDL: human = mart tables/relationships; agent = _KPIs.tmdl
+│   └── {{project}}.Report/
+│       └── definition/              # pages.json, page.json, visual.json (agent)
 └── README.md
 ```
 
@@ -292,7 +299,7 @@ After Phase 1, the agent must:
 
 Every phase prompt assumes the agent has read:
 
-1. `[config.md](config.md)` — project variables (`PROJECT_ROOT`, `PROJECT_NAME`, `SCHEMA_NAME`, `SOURCE_NAME`, `ENABLE_SEMANTIC_LAYER`, `ENABLE_BI_DELIVERY`, connection details, etc.)
+1. `[config.md](config.md)` — project variables (`PROJECT_ROOT`, `PROJECT_NAME`, `SCHEMA_NAME`, `SOURCE_NAME`, `MARTS_SCHEMA`, `ENABLE_SEMANTIC_LAYER`, `BI_PBIP_DIR`, `BI_TOOL`, connection details, etc.)
 2. Requirements document — path from `REQUIREMENTS_DOC` in config.md (Phase 1+ only; Phase 0 uses config only)
 3. Design Brief file — path from `DESIGN_BRIEF_DOC` (Phases 2–8 and Feedback Re-run; must have `Status: approved` before Phase 2)
 4. Client feedback file — path from `CLIENT_FEEDBACK_DOC` (**Feedback Re-run** only; filled by the team before running)
@@ -679,42 +686,237 @@ Do not add new models or change DESIGN_BRIEF_DOC in this phase — validation an
 
 ---
 
-## PHASE 8 — BI Delivery (optional)
+## PHASE 8 — BI Delivery
 
-**Skills:** `using-dbt-for-analytics-engineering` (read KPI map); BI tool MCP or manual steps per `BI_TOOL`
-**Output:** Governed measures and report layout per `BI_BUILD_GUIDE_DOC`; BI model connected to marts schema
-**Prerequisite:** Phase 7 `dbt build` pass; `ENABLE_BI_DELIVERY: true` in config
+**Skills:** `using-dbt-for-analytics-engineering` (read KPI map); Power BI Modeling MCP when available
+**Output:** Governed `_KPIs` DAX measures and report pages/visuals in the PBIP under `BI_PBIP_DIR`
+**Prerequisite:** Phase 7 `dbt build` pass; **human Desktop import complete** — all §8 mart tables refresh successfully (see human note below)
+
+> **Workflow (June 2026):** The **human imports marts and relationships in Power BI Desktop**. The **agent does not** generate partition M-queries, import tables, or bulk-wire `relationships.tmdl`. Agent scope is **`_KPIs` + report JSON only**.
+
+> **Human (before paste — not part of agent prompt):**
+> 1. Create `BI_PBIP_DIR` if missing. Enable **Preview features → Store semantic model using TMDL format**.
+> 2. Save a `.pbip` into `BI_PBIP_DIR` (creates linked `.Report/` and `.SemanticModel/`).
+> 3. **Get Data** → warehouse connector → database from `config.md` → schema **`BI_SEMANTIC_SCHEMA`** (prove via dbt/`pg_tables` — often `{profiles_schema}_{MARTS_SCHEMA}`, e.g. `source_marts`).
+> 4. Import every table in Design Brief **§8** plus §9 extras (e.g. `fct_refunds`). Skip staging/intermediate/raw.
+> 5. **Relationships — incrementally** in Desktop (not all at once). Deactivate paths that cause `PFE_XL_USERELATIONSHIP_AMBIGUOUS_PATH`. **Do not** relate keys with blanks on the one side (e.g. `fct_payments[psp_payment_id]`).
+> 6. **Refresh all** until clean. Save. Close Desktop.
+> 7. Tell the agent: **`Desktop import OK — continue Phase 8`** (or paste first refresh error if blocked).
+> 8. Review the agent **wireframe** (Step 2.5); reply **`Wireframe approved`** or request changes before visuals are generated.
+
+### Agent prompt — copy everything inside the fence below
 
 ```
-You are an analytics engineer delivering a BI layer on top of built dbt marts.
+You are an analytics engineer delivering the governed Power BI layer on top of human-imported dbt marts.
 
-Read config.md and substitute all project variables. Read ENABLE_BI_DELIVERY and BI_TOOL.
-If ENABLE_BI_DELIVERY is false, skip this phase entirely.
+Read config.md and substitute project variables. Read BI_TOOL and BI_PBIP_DIR.
+BI_TOOL must be powerbi for this library version.
+Read REQUIREMENTS_DOC and DESIGN_BRIEF_DOC — §2 KPI map, §8 mart star schema, and §9 semantic metrics.
 
-Read the requirements document at REQUIREMENTS_DOC.
-Read DESIGN_BRIEF_DOC — §2 KPI map and §9 semantic metrics.
-Read BI_BUILD_GUIDE_DOC if it exists; create it if missing and BI delivery is in scope.
+---
 
-1. Connect BI semantic model to MARTS_SCHEMA tables (fct_*, dim_*, bridge_* from Design Brief §8).
+## Division of labor (strict)
 
-2. Create governed measures for every KPI in Design Brief §9:
-   - One measure per KPI; do not use raw column aggregations on fact tables in report visuals
-   - Measure logic must match semantic_models.yml filters when ENABLE_SEMANTIC_LAYER is true
-   - When semantic layer is disabled, measures must match Design Brief §9 formulas and mart column names
+| Owner | Responsibility |
+| ----- | -------------- |
+| **Human (Desktop)** | PBIP scaffold, mart import from `BI_SEMANTIC_SCHEMA`, relationships, refresh, ambiguous-path fixes |
+| **Agent** | `_KPIs` DAX measures, report `pages/` + `visuals/` JSON, `model.tmdl` ref to `_KPIs` only |
 
-3. Write or update BI_BUILD_GUIDE_DOC:
-   - Page / dashboard map to business questions from requirements.md
-   - Which measure goes on which visual type (card vs breakdown chart)
-   - Required dimension relationships for slicers (activate inactive relationships if noted)
-   - Explicit rule: executive pages = totals + time trends; detail pages = dimensional breakdowns
+**Agent must NOT:**
+- Create or edit `tables/*.tmdl` for mart tables (partitions, columns, types)
+- Create or edit `relationships.tmdl` or `expressions.tmdl` (unless human explicitly asks)
+- Run schema discovery approval gates or codegen scripts (`_tmp_gen_*.py`, `scripts/generate_pbip*`)
+- Bulk-wire all §8 FKs or rewrite ODBC partition SQL
 
-4. Validate each measure returns a non-blank value in a total card context where data exists.
-   - Use DIVIDE(..., 0) or IF(denominator=0, 0, ...) for ratio measures — never leave BLANK when client expects zero
+**Agent may:**
+- Read existing TMDL to grep exact `sourceColumn` / measure names for visuals
+- Run MCP ConnectFolder on `...SemanticModel/definition/` (parse only)
+- **Advise** the human on relationship ambiguity or bad keys — do not fix relationships unless explicitly requested
 
-5. Update AI_EXECUTION_LOG with Phase 8 row.
+---
 
-Do not change dbt models in this phase unless a compile error proves mart schema mismatch — document blockers instead.
+## Write scope (strict)
+
+Create and update ONLY:
+- `{PBIP_PROJECT}.SemanticModel/definition/tables/_KPIs.tmdl`
+- `{PBIP_PROJECT}.SemanticModel/definition/model.tmdl` — add `ref table _KPIs` if missing (do not add `ref relationships`)
+- `{PBIP_PROJECT}.Report/definition/` — `pages/pages.json`, `pages/{pageId}/page.json`, `pages/{pageId}/visuals/{visualId}/visual.json`
+
+Do NOT add BI deliverables elsewhere. Edit TMDL/JSON directly or via Power BI Modeling MCP measure operations.
+
+---
+
+## Step 0 — Verify human import gate (mandatory STOP if not met)
+
+1. Resolve `PBIP_PROJECT` from disk: sole `.pbip` in `BI_PBIP_DIR` with linked `.Report` + `.SemanticModel/definition/model.tmdl` (ignore stale config comments).
+2. Confirm `{PBIP_PROJECT}.Report/definition.pbir` → `../{PBIP_PROJECT}.SemanticModel`.
+3. Confirm mart tables exist: `SemanticModel/definition/tables/` contains §8 `fct_*`, `dim_*`, `bridge_*` TMDL files **written by Desktop** (not agent-empty scaffold).
+4. **Human confirmation required:** message must include **`Desktop import OK`**, **`Refresh OK`**, or equivalent quote. If only errors pasted, **STOP** — advise human on the **first** native error; do not generate partitions.
+
+If scaffold missing or no mart tables on disk, STOP. Tell human to complete the human steps in the Phase 8 header above.
+
+---
+
+## Step 1 — Read the imported model (read-only)
+
+Before writing measures or visuals:
+1. List tables and columns from `SemanticModel/definition/tables/*.tmdl` (exclude `_KPIs` if present).
+2. Note flag column types (boolean vs numeric) — match DAX filters to what Desktop imported (`= 1` / `= 0` for numeric flags).
+3. Note relationship columns available for slicers (e.g. `snapshot_quarter`, `subscription_status`, `partner_name`).
+4. Do **not** change mart table TMDL.
+
+---
+
+## Step 2 — Create governed `_KPIs` measures
+
+Create or update `{PBIP_PROJECT}.SemanticModel/definition/tables/_KPIs.tmdl`.
+
+For every KPI in Design Brief §9:
+1. One DAX measure per KPI — never raw column sums in visuals.
+2. Match `semantic_models.yml` when `ENABLE_SEMANTIC_LAYER` is true; else Design Brief §9 formulas.
+3. `DIVIDE(..., 0)` or `IF(denominator = 0, 0, ...)` for ratios — never BLANK when client expects zero (e.g. Pre-order Share → 0%).
+4. Quarter-scoped measures (Churn Rate, Upgrade Rate, `fct_subscription_monthly_snapshots`):
+   - `VAR EffectiveQuarter = SELECTEDVALUE(fct_subscription_monthly_snapshots[snapshot_quarter], CALCULATE(MAX(...), ALL(fct_subscription_monthly_snapshots[snapshot_quarter])))`
+   - Filter to `EffectiveQuarter` inside `CALCULATE` — never unfiltered lifetime churn
+   - Executive page: `snapshot_quarter` slicer when §9 requires
+5. Cross-table measures without active relationships: use `TREATAS` / `USERELATIONSHIP` (e.g. PSP retry customers) — do not add relationships in agent scope.
+6. Display folders from REQUIREMENTS_DOC / §2 subject areas.
+
+`_KPIs` partition: empty import table acceptable (`Table.FromRows({})`).
+
+Add `ref table _KPIs` to `model.tmdl` if missing.
+
+Note gaps early (e.g. `sla_breach_count`, Zoho recognized revenue, credit-note **value**, region for SLA) — add measures only when columns exist in human-imported TMDL; otherwise list as **deferred** on the wireframe.
+
+---
+
+## Step 2.5 — Report analytics & wireframe (mandatory STOP for human approval)
+
+**Do not write `visual.json` until the human approves the wireframe.** Cards-only layouts are insufficient unless the wireframe explicitly marks a question as card-only.
+
+### 2.5.1 Derive pages from analysis (not from a fixed template)
+
+1. Read **REQUIREMENTS_DOC** business questions and **DESIGN_BRIEF_DOC** §2 (Q1–Q15): grain, subject area, primary KPI per question.
+2. Read **§8** star schema: which dimensions exist on each fact (`partner_name`, `program_name`, `year_month`, SKU attributes, etc.) — grep human-imported `tables/*.tmdl`; use **exact** Desktop entity names (e.g. `source_marts fct_orders` if prefixed).
+3. For each question, decide:
+   - **Roll-up** (single number) → `cardVisual` on Executive and/or detail page
+   - **Trend over time** → `lineChart` or `areaChart` (Category = date/month/quarter column)
+   - **Compare categories** → `clusteredColumnChart` or `clusteredBarChart` (Category = dim attribute; Y = `_KPIs` measure)
+   - **Part-to-whole** → `donutChart` or `100% stackedBarChart` (status mix, order type)
+   - **Detail rows** → `tableEx` (SKU rankings, refund/credit-note detail, program limit table)
+   - **Filters** → `slicer` (dropdown/list; quarter slicer on `snapshot_quarter` where §9 requires)
+
+4. Map **one page per §2 subject area** (minimum six): Executive Summary | Sales & Orders | Subscriptions | Finance & Payments | Customers | Operations & Partners. Executive answers cross-cutting monthly/quarterly rollups; detail pages answer full question grains.
+
+### 2.5.2 Visual-type selection rules
+
+| Analytical need | Preferred `visualType` | `queryState` buckets |
+| --------------- | ---------------------- | -------------------- |
+| Single KPI | `cardVisual` | `Data` (not legacy `card` / `Values`) |
+| Metric over time | `lineChart` | `Category` + `Y` (no `sortDefinition` on time) |
+| Rank / compare partners, programs, SKUs | `clusteredBarChart` or `clusteredColumnChart` | `Category` + `Y`; optional `sortDefinition` desc on measure |
+| Status / mix share | `donutChart` | `Category` + `Y` |
+| Multi-metric comparison by month | `lineChart` or `clusteredColumnChart` | multiple measures in `Y` |
+| Top-N detail | `tableEx` | `Values` — dimensions + `_KPIs` measures |
+| Page filter | `slicer` | `Values` |
+
+**Every business question (Q1–Q15) must appear on the wireframe** as at least one visual (card, chart, or table). A question with multiple grains (e.g. Q1: partner × program × month) needs **multiple visuals** or one chart + supporting table — not a single card.
+
+### 2.5.3 Wireframe deliverable (present to human before Step 3)
+
+Output a markdown table per page:
+
+| Page | Visual title | Type | Answers (Q#) | Fields / measures (exact TMDL names) | Slicers on page |
+| ---- | ------------ | ---- | ------------ | ------------------------------------ | --------------- |
+
+Include estimated visual count per page. List **deferred** items (missing columns, inactive relationships needed, pending Product definitions).
+
+**STOP.** Ask human to reply **`Wireframe approved`** with edits, or paste add/remove/change rows. Do not generate report JSON until approved.
+
+---
+
+## Step 3 — Build report pages and visuals (after wireframe approval)
+
+Implement only the **approved** wireframe. Deliverable is PBIP report JSON — not a `.txt` handoff.
+
+Inside `{PBIP_PROJECT}.Report/definition/`:
+1. `pages/pages.json` — `pageOrder`, `activePageName`
+2. `pages/{pageId}/page.json` — `displayName`, width (1280), height (720+ if needed)
+3. `pages/{pageId}/visuals/{visualId}/visual.json` — match `report.json` `themeCollection.baseTheme.reportVersionAtImport.visual` (often **2.9.0**); schema `visualContainer/{version}/schema.json`
+
+**PBIR binding rules:**
+- KPI tiles: `visualType: "cardVisual"`, bucket **`Data`**, projections include `"active": true`
+- Measures: Entity `_KPIs`, Property = exact measure name from `_KPIs.tmdl`
+- Columns / slicers: `Property` and `queryRef` must match exact TMDL entity/column — grep `tables/*.tmdl`
+- `visual.json` **`name`** must equal the parent folder name (hash)
+- Put `$schema` as a valid top-level key (never stripped by shell escaping)
+- Formatting keys live under `objects[].properties` — not as siblings of `properties`
+- Include `visualContainerObjects.visualHeader` on charts/tables for Service compatibility
+
+**Layout:** stable hex page IDs; explicit `x`, `y`, `width`, `height` on every visual; slicers top row; KPI cards second row on detail pages; charts/tables lower — avoid overlap.
+
+**Reference wireframe (zension v1 — adapt entity names to human import):**
+
+| Page | Visuals (type) |
+| ---- | ---------------- |
+| **Executive** | `snapshot_quarter` slicer; 10–12 `cardVisual` KPIs (GMV, Orders, MRR, Active subs, Churn, Upgrade, Collected, Variance, Refunds, Verified, Payment failure %, Pre-order %); `lineChart` collected vs invoiced by `reconciliation_month`; `clusteredBarChart` GMV by `partner_name` |
+| **Sales** | slicers `partner_name`, `program_name`; cards for Q2 metrics; `lineChart` or column GMV by `year_month` (Q1); bar GMV by partner; bar `order_item_count` by `brand`; `tableEx` brand + `memory` + `color` by partner (Q3) |
+| **Subscriptions** | slicers `snapshot_quarter`, `subscription_status`; cards Q5–Q6; `donutChart` subs by status; bar MRR by `program_name`; bar subs by `partner_name` (Q4) |
+| **Finance** | slicer `partner_name`; cards Q7–Q9; `lineChart` collected / invoiced / variance by month; bar refunds by partner; `tableEx` credit notes by partner + value (Q9) |
+| **Customers** | slicer `company_name`; cards Q10–Q12; bar verified customers by company; bar utilization by program |
+| **Operations** | slicer `partner_name`; cards Q13–Q15; bar median delivery days by partner; bar API failure rate by partner; `tableEx` programs over limit / disabled (Q15) |
+
+Human may add/remove rows before **`Wireframe approved`**.
+
+---
+
+## Step 4 — Validate (before handoff)
+
+1. Every §9 metric has a measure in `_KPIs.tmdl` (or documented deferral on wireframe).
+2. Every REQUIREMENTS_DOC business question (Q1–Q15) maps to **at least one** visual on the wireframe and on disk.
+3. No page is **card-only** unless wireframe marked the page as rollup-only (Executive may be card-heavy but must include ≥1 trend or comparison chart).
+4. Report link: `definition.pbir` → `../{PBIP_PROJECT}.SemanticModel`.
+5. Visual field grep: every `Property` / `queryRef` in report JSON exists in semantic model TMDL.
+6. MCP available: ConnectFolder on `SemanticModel/definition/` — `_KPIs` + mart tables parse (offline only).
+7. **Do not** claim refresh or relationship validation — human already proved import.
+
+### Human handoff (final)
+
+Ask human to:
+1. Re-open `{PBIP_PROJECT}.pbip` in Desktop.
+2. Confirm no new `PFE_XL_USERELATIONSHIP_AMBIGUOUS_PATH` after agent changes (agent did not edit relationships).
+3. Spot-check Executive KPIs with `snapshot_quarter` slicer (Churn ~quarter rate per §9).
+4. Reply **`Phase 8 OK`** or paste issues.
+
+If visuals are blank: grep field names against human-imported TMDL — fix `queryRef`, not mart partitions.
+
+---
+
+## Known pitfalls (agent scope)
+
+1. Editing human `tables/*.tmdl` partitions → ODBC / refresh regressions. **Do not.**
+2. Bulk codegen relationships → ambiguous paths. Human wires incrementally; agent advises only.
+3. Ratio measures without zero fallback → blank cards. Use `DIVIDE(..., 0)`.
+4. Unfiltered snapshot churn → ~2× quarterly rate. Quarter-scope per §9.
+5. Visual `queryRef` ≠ TMDL column name → empty visual. Grep before write.
+6. `snapshot_quarter` single-value error → use two-argument `SELECTEDVALUE` + `ALL()` default.
+7. Flag columns imported as numeric → DAX uses `= 1` / `= 0`, not `TRUE()` / `FALSE()`.
+8. TMDL at SemanticModel root → must stay under `definition/` only.
+9. MCP ConnectFolder on SemanticModel root → use `...SemanticModel/definition/`.
+10. Cascaded "Load was cancelled by previous table" → human fixes **first** table error during import (not agent partition rewrites).
+11. Defaulting to **card-only** pages → violates Q1–Q15 grains; run Step 2.5 wireframe and get **`Wireframe approved`** before JSON.
+12. Legacy `card` + `Values` or schema **2.7.0** when report theme expects **2.9.0** → blank/broken tiles; use `cardVisual` + `Data`, match `report.json` visual schema version.
+
+---
+
+## Step 5 — Log
+
+Update AI_EXECUTION_LOG Phase 8 row: `PBIP_PROJECT`, human import confirmation (quote), wireframe approval (quote or pending), mart table count, `_KPIs` measure count, report pages/visuals count by type, Q1–Q15 coverage checklist, ConnectFolder result (parse only), human Phase 8 sign-off (quote or pending). **Do not** log partition branch, ODBC grep, or graph audit unless agent was explicitly asked to edit relationships.
 ```
+
+> **End of Phase 8 agent prompt**
+
+> **Deprecated (agent must not do):** Auto-generating all mart `tables/*.tmdl` with `PostgreSQL.Database()` partition SQL, bulk `relationships.tmdl` codegen, schema-discovery approval gates, and ODBC pitfall-13 cast matrices. Those caused production refresh failures; human Desktop import replaces them.
 
 ---
 
@@ -743,7 +945,7 @@ After delivery, the **client** sends corrections. The **data engineer and analys
 | **5** | Mart columns or grain changed |
 | **6** | Semantic layer metrics changed (`ENABLE_SEMANTIC_LAYER: true`) |
 | **7** | Run `dbt build` + tests — include whenever 3–6 ran |
-| **8** | BI measures or report changed (`ENABLE_BI_DELIVERY: true`) |
+| **8** | BI `_KPIs` measures or report pages/visuals in the PBIP — **preserve** human-imported `tables/*.tmdl` and `relationships.tmdl`; agent edits `_KPIs.tmdl` and report JSON only |
 
 Pick the **minimum** phases. Do not restart Phase 0. Re-run Phase 2 only if new source tables are required.
 
@@ -822,7 +1024,7 @@ Verify every `CLIENT_FEEDBACK_DOC` change row is reflected in the approved Desig
 
 3. When Phase 7 is listed: run `dbt build` for the affected subgraph (prefer `--select` on changed models).
 
-4. When Phase 8 is listed and `ENABLE_BI_DELIVERY` is true: update BI measures and report per agreed fixes in `DESIGN_BRIEF_DOC` §9.
+4. When Phase 8 is listed: **do not** regenerate mart partitions or bulk-edit `relationships.tmdl` unless the human explicitly requests a model rewire. Update `_KPIs.tmdl` and report JSON per `DESIGN_BRIEF_DOC` §9 and §2. Run **Step 2.5 wireframe** and require human **`Wireframe approved`** before writing visual JSON (cards-only layouts are not acceptable unless explicitly approved). Grep human-imported TMDL for exact column names. Require human `Desktop import OK` / `Refresh OK` before first Phase 8 run; on feedback Pass 2, preserve working human import. Re-apply Phase 8 Step 4 validation (Q1–Q15 visual coverage, measure count, field grep, ConnectFolder parse).
 
 5. Log results in `AI_EXECUTION_LOG` (feedback cycle summary, models touched, validation queries).
 
@@ -858,7 +1060,7 @@ Track every phase run. Documenting AI reliability is part of the deliverable.
 | 5     | analytics-eng                                 | fct_ / dim_ / bridge_ marts                           |                      |                    |
 | 6     | semantic-layer + run-commands + analytics-eng | semantic_models.yml (if enabled), _marts__models.yml, README.md |          |                    |
 | 7     | run-commands + analytics-eng                  | dbt build pass, grain validation, execution log       |                      |                    |
-| 8     | analytics-eng + BI tool                       | BI measures + BI_BUILD_GUIDE_DOC (if ENABLE_BI_DELIVERY) |                   |                    |
+| 8     | analytics-eng + Power BI MCP / TMDL           | PBIP `_KPIs` + report pages/visuals (human imports marts) |                   |                    |
 | F1    | analytics-eng                                 | Feedback Re-run pass 1 — docs pending approval        |                      |                    |
 | F2    | analytics-eng + run-commands                  | Feedback Re-run pass 2 — implement per `client_feedback.md` |              |                    |
 
@@ -959,7 +1161,7 @@ MCP is **optional**. Client feedback uses `client_feedback.md` plus **Feedback R
 
 ```text
 Initial build:
-  Phase 0 → 1 → approve design_brief → 2–7 → 8 (optional) → deliver
+  Phase 0 → 1 → approve design_brief → 2–7 → human Desktop mart import → 8 (KPIs + report) → deliver
 
 Client feedback:
   client comments → team fills client_feedback.md → Feedback Re-run Pass 1 (reset Status, update docs, stop) → human approves design_brief → Feedback Re-run Pass 2 (explicit phrase in message) → deliver
